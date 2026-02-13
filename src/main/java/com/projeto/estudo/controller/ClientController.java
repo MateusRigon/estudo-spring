@@ -1,72 +1,73 @@
 package com.projeto.estudo.controller;
 
 import com.projeto.estudo.dto.ApiResponse;
-import com.projeto.estudo.handler.ClientNotFoundException;
+import com.projeto.estudo.messaging.ClientCreatedPublisher;
 import com.projeto.estudo.model.Client;
-import com.projeto.estudo.service.ClienteService;
+import com.projeto.estudo.service.ClientService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
-@RequestMapping("api/")
+@RequestMapping("/api/clients")
 public class ClientController {
 
-    private final ClienteService clienteService;
+    private final ClientService clientService;
+    private final ClientCreatedPublisher clientCreatedPublisher;
 
-    @Autowired
-    public ClientController(ClienteService clienteService){
-        this.clienteService = clienteService;
+    public ClientController(ClientService clientService, ClientCreatedPublisher clientCreatedPublisher) {
+        this.clientService = clientService;
+        this.clientCreatedPublisher = clientCreatedPublisher;
     }
 
-    @GetMapping("/getAllClients")
+    @GetMapping
     public ResponseEntity<ApiResponse<List<Client>>> getAllClients() {
-        List<Client> clientes = this.clienteService.findAllClient();
-        return ResponseEntity.ok(ApiResponse.success("Lista de clientes:", clientes));
+        List<Client> clients = clientService.getAllClients();
+        return ResponseEntity.ok(ApiResponse.success("Clients retrieved successfully.", clients));
     }
 
-    @GetMapping("/getIdByEmail/{email}")
-    public ResponseEntity<ApiResponse<Integer>> getIdByEmail(@PathVariable String email) {
-        Integer id = this.clienteService.getIdByEmail(email);
-        return ResponseEntity.ok(ApiResponse.success("ID found:", id));
-    }
-
-    @GetMapping("/getClientById/{id}")
+    @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<Client>> getClientById(@PathVariable int id) {
-        Client cliente = this.clienteService.getClientById(id)
-                .orElseThrow(() -> new ClientNotFoundException("Client not found!"));
-
-        return ResponseEntity.ok(ApiResponse.success("Client data:", cliente));
+        Client client = clientService.getClientById(id);
+        return ResponseEntity.ok(ApiResponse.success("Client retrieved successfully.", client));
     }
 
-    @PostMapping("/addClient")
-    public ResponseEntity<ApiResponse<Client>> addClient(@Valid @RequestBody Client client){
-        Client saved = this.clienteService.addClient(client);
-        return ResponseEntity.ok(ApiResponse.success("Client "+client.getEmail()+" added with success!", saved));
+    @GetMapping("/email/{email}/id")
+    public ResponseEntity<ApiResponse<Integer>> getClientIdByEmail(@PathVariable String email) {
+        Integer clientId = clientService.getClientIdByEmail(email);
+        return ResponseEntity.ok(ApiResponse.success("Client id retrieved successfully.", clientId));
     }
 
-    @DeleteMapping("/deleteClientById/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteClientById(@PathVariable int id){
-        clienteService.deleteClientById(id);
-        return ResponseEntity.ok(ApiResponse.success("Client "+id+" deleted with success!", null));
+    @PostMapping
+    public ResponseEntity<ApiResponse<Client>> createClient(@Valid @RequestBody Client client) {
+        Client savedClient = clientService.createClient(client);
+
+        ApiResponse<Client> response = ApiResponse.success(
+                "Client " + savedClient.getEmail() + " created successfully.",
+                savedClient
+        );
+
+        clientCreatedPublisher.publish(response);
+        return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/deleteClientByEmail/{email}")
-    public ResponseEntity<ApiResponse<Void>> deleteClient(@PathVariable String email) {
-        clienteService.deleteClientByEmail(email);
-        return ResponseEntity.ok(ApiResponse.success("Client "+email+" deleted with success!", null));
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<Client>> updateClient(@PathVariable int id, @Valid @RequestBody Client payload) {
+        Client updatedClient = clientService.updateClient(id, payload);
+        return ResponseEntity.ok(ApiResponse.success("Client updated successfully.", updatedClient));
     }
 
-    @PutMapping("/updateClient/{id}")
-    public ResponseEntity<ApiResponse<Client>> updateClient(
-            @PathVariable int id,
-            @Valid @RequestBody Client client
-    ) {
-        Client updated = clienteService.updateClient(id, client);
-        return ResponseEntity.ok(ApiResponse.success("Changes saved!", updated));
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteClientById(@PathVariable int id) {
+        clientService.deleteClientById(id);
+        return ResponseEntity.ok(ApiResponse.success("Client deleted successfully.", null));
+    }
+
+    @DeleteMapping("/email/{email}")
+    public ResponseEntity<ApiResponse<Void>> deleteClientByEmail(@PathVariable String email) {
+        clientService.deleteClientByEmail(email);
+        return ResponseEntity.ok(ApiResponse.success("Client deleted successfully.", null));
     }
 }
