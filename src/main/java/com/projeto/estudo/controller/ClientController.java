@@ -1,7 +1,6 @@
 package com.projeto.estudo.controller;
 
 import com.projeto.estudo.dto.ApiResponse;
-import com.projeto.estudo.messaging.ClientCreatedPublisher;
 import com.projeto.estudo.model.Client;
 import com.projeto.estudo.service.ClientService;
 import jakarta.validation.Valid;
@@ -15,11 +14,9 @@ import java.util.List;
 public class ClientController {
 
     private final ClientService clientService;
-    private final ClientCreatedPublisher clientCreatedPublisher;
 
-    public ClientController(ClientService clientService, ClientCreatedPublisher clientCreatedPublisher) {
+    public ClientController(ClientService clientService) {
         this.clientService = clientService;
-        this.clientCreatedPublisher = clientCreatedPublisher;
     }
 
     @GetMapping
@@ -43,14 +40,10 @@ public class ClientController {
     @PostMapping
     public ResponseEntity<ApiResponse<Client>> createClient(@Valid @RequestBody Client client) {
         Client savedClient = clientService.createClient(client);
-
-        ApiResponse<Client> response = ApiResponse.success(
+        return ResponseEntity.ok(ApiResponse.success(
                 "Client " + savedClient.getEmail() + " created successfully.",
                 savedClient
-        );
-
-        clientCreatedPublisher.publish(response);
-        return ResponseEntity.ok(response);
+        ));
     }
 
     @PutMapping("/{id}")

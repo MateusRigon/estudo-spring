@@ -2,6 +2,8 @@ package com.projeto.estudo.service;
 
 import com.projeto.estudo.handler.InvalidRequestException;
 import com.projeto.estudo.handler.ResourceNotFoundException;
+import com.projeto.estudo.messaging.OrderCreatedEvent;
+import com.projeto.estudo.messaging.OrderCreatedPublisher;
 import com.projeto.estudo.model.Client;
 import com.projeto.estudo.model.ItemOrder;
 import com.projeto.estudo.model.Order;
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderService {
@@ -23,15 +26,18 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final ClientRepository clientRepository;
     private final ProductRepository productRepository;
+    private final OrderCreatedPublisher orderCreatedPublisher;
 
     public OrderService(
             OrderRepository orderRepository,
             ClientRepository clientRepository,
-            ProductRepository productRepository
+            ProductRepository productRepository,
+            OrderCreatedPublisher orderCreatedPublisher
     ) {
         this.orderRepository = orderRepository;
         this.clientRepository = clientRepository;
         this.productRepository = productRepository;
+        this.orderCreatedPublisher = orderCreatedPublisher;
     }
 
     public List<Order> getAllOrders() {
@@ -56,7 +62,9 @@ public class OrderService {
         order.setClient(client);
         replaceOrderItems(order, payload.getItems());
 
-        return orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+        orderCreatedPublisher.publish(buildOrderCreatedEvent(savedOrder));
+        return savedOrder;
     }
 
     @Transactional
@@ -129,5 +137,23 @@ public class OrderService {
     private Client getClientById(int id) {
         return clientRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Client with id " + id + " not found."));
+    }
+
+    private OrderCreatedEvent buildOrderCreatedEvent(Order order) {
+        List<OrderCreatedEvent.OrderItemEvent> items = order.getItems()
+                .stream()
+                .map(item -> new OrderCreatedEvent.OrderItemEvent(
+                        item.getProduct().getId(),
+                        item.getQuantity(),
+                        item.getUnitPrice()
+                ))
+                .collect(Collectors.toList());
+
+        return new OrderCreatedEvent(
+                order.getId(),
+                order.getClient().getId(),
+                order.getCreatedAt(),
+                items
+        );
     }
 }

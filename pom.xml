@@ -10,9 +10,9 @@
 	</parent>
 	<groupId>com.projeto</groupId>
 	<artifactId>estudo</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<name>Estudo de Mensageria</name>
-	<description>Estudo de Mensageria</description>
+	<version>0.0.2-SNAPSHOT</version>
+	<name>Estudo Spring Boot</name>
+	<description>Estudo Spring Boot</description>
 	<url/>
 	<licenses>
 		<license/>

@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Configuration;
 public class RabbitMQConfig {
 
     @Bean
-    public Queue clientCreatedQueue(@Value("${app.rabbitmq.client-created-queue}") String queueName) {
+    public Queue orderCreatedQueue(@Value("${app.rabbitmq.order-created-queue}") String queueName) {
         return QueueBuilder.durable(queueName).build();
     }
 
